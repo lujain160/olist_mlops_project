@@ -1,0 +1,18 @@
+Paths:
+  data_dir: "data"
+  model_dir: "models"
+  train_feature: "data/train_feature.csv"
+  train_labels: "data/train_labels.csv"
+  val_feature: "data/validation_feature.csv"
+  val_labels: "data/validation_labels.csv"
+  test_feature: "data/test_feature.csv"
+  test_labels: "data/test_labels.csv"
+
+model_params:
+  random_state: 42
+  target_col: "is_late"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  title: "Olist Delivery Late Prediction API"
