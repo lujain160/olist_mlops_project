@@ -93,6 +93,7 @@ def train_and_track():
             f"The winning model is [{best_model_name}] with best ROC-AUC: {best_score:.4f}"
         )
         logger.info(f"Saved the best model to: {best_model_path}")
+        
         model_uri = f"runs:/{best_run_id}/model"
         registered_model_name = "OlistDeliveryModel"
 
