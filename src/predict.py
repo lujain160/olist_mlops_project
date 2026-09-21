@@ -5,6 +5,7 @@ from src.config import load_config
 from src.validation import validate_input_data
 import logging
 import time
+import mlflow.sklearn
 
 log_dir = Path("logs")
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -23,22 +24,23 @@ def load_artifacts():
     config = load_config()
     paths = config.get("Paths", {})
 
+    mlflow.set_tracking_uri("http://localhost:5000")
+
+    model_uri = "models:/OlistDeliveryModel/latest"
+    logger.info(f"Loading model directly from MLflow Registry: {model_uri}")
+
+    try:
+        model = mlflow.sklearn.load_model(model_uri)
+        model_version = "v1.0.0"
+    except Exception as e:
+        logger.error(f"Failed to load model from MLflow Registry: {e}")
+        raise e
+
     model_dir = Path(paths.get("model_dir", "models"))
-    model_path = model_dir / "final_model.joblib"
     preprocessor_path = model_dir / "preprocessor.joblib"
-
-    if not model_path.exists():
-        raise FileNotFoundError(
-            f"Model not found at {model_path}. Please train the model first."
-        )
-
-    model = joblib.load(model_path)
-
-    # Load preprocessor if it exists
     preprocessor = (
         joblib.load(preprocessor_path) if preprocessor_path.exists() else None
     )
-    model_version = "v1.0.0"
 
     return model, preprocessor, model_version
 
@@ -81,7 +83,7 @@ def make_predictions(input_data: pd.DataFrame):
         return predictions, probabilities
 
     except Exception as e:
-        logger.error(f"Error during predictio: {str(e)}", exc_info=True)
+        logger.error(f"Error during prediction: {str(e)}", exc_info=True)
         return {"error": str(e)}, None
 
 
