@@ -1,11 +1,12 @@
-from pathlib import Path
 import joblib
 import pandas as pd
-from src.config import load_config
-from src.validation import validate_input_data
 import logging
 import time
 import mlflow.sklearn
+from pathlib import Path
+from src.config import load_config
+from src.validation import validate_input_data
+from src.monitoring import monitor
 
 log_dir = Path("logs")
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,10 @@ def make_predictions(input_data: pd.DataFrame):
         validation_output = validate_input_data(input_data)
         if not validation_output["success"]:
             logger.error("Data validation FAILED. Rejecting prediction request.")
+
+            latency = (time.time() - start_time) * 1000
+            monitor.track_request(latency=latency, is_error=True)
+
             return {
                 "error": "Bad input data: Data failed validation check.",
                 "validation_details": validation_output["results"],
@@ -74,7 +79,19 @@ def make_predictions(input_data: pd.DataFrame):
         probabilities = None
         if hasattr(model, "predict_proba"):
             probabilities = model.predict_proba(processed_data)[:, 1].tolist()
+
         latency = (time.time() - start_time) * 1000
+
+        monitor.track_request(latency=latency, is_error=False)
+
+        pred_val = predictions[0] if hasattr(predictions, "__len__") else predictions
+        prob_val = probabilities[0] if probabilities else 0.0
+        monitor.log_predictions_for_evaluation(
+            input_data=input_data.iloc[0].to_dict() if not input_data.empty else {},
+            prediction=int(pred_val),
+            probability=float(prob_val),
+        )
+
         logger.info(
             f"Prediction successful | Model Version: {model_version} | "
             f"Input Shape: {input_data.shape} | Predictions: {predictions.tolist()} | "
@@ -83,6 +100,10 @@ def make_predictions(input_data: pd.DataFrame):
         return predictions, probabilities
 
     except Exception as e:
+
+        latency = (time.time() - start_time) * 1000
+        monitor.track_request(latency=latency, is_error=True)
+
         logger.error(f"Error during prediction: {str(e)}", exc_info=True)
         return {"error": str(e)}, None
 
