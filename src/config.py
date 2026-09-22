@@ -18,6 +18,7 @@ def load_config(config_path=None):
         if not config_path.exists():
             raise FileExistsError(f"Configuration file not found at {config_path}")
         logger.info(f"Loading configuration from {config_path}...")
+
         with open(config_path, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
         logger.info("Configuration loaded successfully.")

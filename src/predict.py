@@ -32,7 +32,6 @@ def load_artifacts():
 
     try:
         model = mlflow.sklearn.load_model(model_uri)
-        model_version = "v1.0.0"
     except Exception as e:
         logger.error(f"Failed to load model from MLflow Registry: {e}")
         raise e
@@ -43,7 +42,7 @@ def load_artifacts():
         joblib.load(preprocessor_path) if preprocessor_path.exists() else None
     )
 
-    return model, preprocessor, model_version
+    return model, preprocessor
 
 
 def make_predictions(input_data: pd.DataFrame):

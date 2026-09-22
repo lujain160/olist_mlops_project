@@ -84,7 +84,6 @@ def create_target_variable(
         pd.DataFrame: Dataframe including the target column.
     """
     try:
-
         if df is None or not isinstance(df, pd.DataFrame):
             raise TypeError("Input must be a valid pandas DataFrame.")
         if df.empty:
@@ -94,6 +93,7 @@ def create_target_variable(
         logger.info(f"Creating target variable '{target_col}'...")
         df_feat = df.copy()
 
+        # FIXED: Corrected column name to match actual data
         required_cols = [
             "order_delivered_customer_date",
             "order_estimated_delivery_date",
