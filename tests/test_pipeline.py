@@ -24,7 +24,7 @@ def test_extract_temporal_features():
 
 def test_create_target_variable():
     data = {
-        "order_delivery_customer_date": ["2016-09-15 12:00:00"],
+        "order_delivered_customer_date": ["2016-09-15 12:00:00"],
         "order_estimated_delivery_date": ["2016-09-14 12:00:00"],
     }
     df = pd.DataFrame(data)
