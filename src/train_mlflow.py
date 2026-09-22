@@ -83,7 +83,7 @@ def train_and_track():
                 best_score = roc_auc
                 best_model_name = name
                 best_model = model
-                best_run_id = run.info.run_id
+                best_run_id = mlflow.active_run().info.run_id
 
     # Save the best model locally
     if best_model:
@@ -93,7 +93,7 @@ def train_and_track():
             f"The winning model is [{best_model_name}] with best ROC-AUC: {best_score:.4f}"
         )
         logger.info(f"Saved the best model to: {best_model_path}")
-        
+
         model_uri = f"runs:/{best_run_id}/model"
         registered_model_name = "OlistDeliveryModel"
 
