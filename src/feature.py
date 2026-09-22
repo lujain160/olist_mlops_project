@@ -84,7 +84,7 @@ def create_target_variable(
         pd.DataFrame: Dataframe including the target column.
     """
     try:
-        
+
         if df is None or not isinstance(df, pd.DataFrame):
             raise TypeError("Input must be a valid pandas DataFrame.")
         if df.empty:
@@ -95,7 +95,7 @@ def create_target_variable(
         df_feat = df.copy()
 
         required_cols = [
-            "order_delivery_customer_date",
+            "order_delivered_customer_date",
             "order_estimated_delivery_date",
         ]
         missing_cols = [col for col in required_cols if col not in df_feat.columns]
