@@ -94,7 +94,7 @@ def create_target_variable(
 
         # FIXED: Corrected column name to match actual data
         required_cols = [
-            "order_delivery_customer_date",
+            "order_delivered_customer_date",
             "order_estimated_delivery_date",
         ]
         missing_cols = [col for col in required_cols if col not in df_feat.columns]
