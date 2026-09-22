@@ -41,8 +41,9 @@ def load_artifacts():
     preprocessor = (
         joblib.load(preprocessor_path) if preprocessor_path.exists() else None
     )
+    model_version = "v1"
 
-    return model, preprocessor
+    return model, preprocessor, model_version
 
 
 def make_predictions(input_data: pd.DataFrame):
