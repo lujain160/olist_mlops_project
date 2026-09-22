@@ -50,4 +50,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: your_dockerhub_username/olist-delivery-api:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/olist-delivery-api:latest
