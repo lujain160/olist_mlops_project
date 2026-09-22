@@ -1,7 +1,6 @@
 import pytest
 import pandas as pd
 import numpy as np
-from pathlib import Path
 from src.feature import extract_temporal_features, create_target_variable
 from src.preprocess import clean_data
 from src.validation import validate_dataframe
@@ -24,7 +23,7 @@ def test_extract_temporal_features():
 
 
 def test_create_target_variable():
-    data = {  
+    data = {
         "order_delivery_customer_date": ["2026-01-06 10:00:00", "2026-01-04 10:00:00"],
         "order_estimated_delivery_date": ["2026-01-05 10:00:00", "2026-01-05 10:00:00"],
     }
