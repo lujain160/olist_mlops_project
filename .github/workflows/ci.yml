@@ -42,7 +42,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: lujain92
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
@@ -50,4 +50,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: l${{ secrets.DOCKER_USERNAME }}/olist-delivery-api:latest
+          tags: lujain92/olist-delivery-api:latest/olist-delivery-api:latest
