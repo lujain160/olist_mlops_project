@@ -1,27 +1,43 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres:13
-    environment:
-      POSTGRES_DB: olist_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
-
-  mlflow-server:
-    image: ghcr.io/mlflow/mlflow:v2.9.2
-    ports:
-      - "5000:5000"
-    command: mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0
-
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: olist-delivery-api
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      MLFLOW_TRACKING_URI: http://mlflow-server:5000
+      MLFLOW_MODEL_NAME: OlistDeliveryModel
+      MLFLOW_MODEL_VERSION: latest
     depends_on:
-      - db
-      - mlflow-server
+      mlflow-server:
+        condition: service_started
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+      - prediction_logs:/app/logs
+    command: ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+
+  mlflow-server:
+    image: ghcr.io/mlflow/mlflow:v2.11.0
+    container_name: olist-mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:///mlflow/mlflow.db
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    command: >-
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:
+  prediction_logs:

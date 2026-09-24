@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
-import pandas as pd
-from pydantic import BaseModel
-from typing import List, Union
-from src.predict import make_predictions
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import logging
+import pandas as pd
+
+from src.predict import make_predictions
 from src.validation import validate_input_data
 
 logger = logging.getLogger(__name__)
@@ -15,94 +16,129 @@ app = FastAPI(
 )
 
 
-# Pydantic Schemas for Request and Response Validation
 class OrderRequest(BaseModel):
-    # Add or adjust the exact fields required by your Olist dataset features
-    order_id: str
-    price: float
-    freight_value: float
+    order_purchase_timestamp: str
+    estimated_delivery_time_days: float = Field(..., ge=0, le=365)
+    purchase_hour: int = Field(..., ge=0, le=23)
+    purchase_dayofweek: int = Field(..., ge=0, le=6)
+
+
+class BatchRequest(BaseModel):
+    orders: List[OrderRequest]
 
 
 class PredictionResponse(BaseModel):
     status: str
-    prediction: Union[List, int, float]
-    probabilities: Union[List, float]
+    prediction: int
+    probability: Optional[float] = None
     model_version: str
 
 
-@app.get("/health")
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    version: str
+
+
+@app.get("/health", response_model=HealthResponse)
 def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "ok",
+        "service": "Olist Shipping Delay API",
+        "version": app.version,
+    }
 
 
 @app.get("/model-info")
 def model_info():
     return {
-        "model_name": "OlistDeliveryModel",
-        "version": "v1",
-        "description": "Inference pipeline for predicting Olist shipping delays",
+        "name": "OlistDeliveryModel",
+        "version": "latest",
+        "source": "mlflow-registry",
+        "status": "ready",
     }
 
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict_endpoint(order: OrderRequest):
-    """
-    API endpoint to receive input data, validate it using Great Expectations,
-    and return the prediction, probabilities, and model version.
-    """
+    """Predict a single order's delivery delay probability."""
     try:
-        # Convert Pydantic model to DataFrame for validation and prediction
-        input_df = pd.DataFrame([order.dict()])
+        input_df = pd.DataFrame([order.model_dump()])
 
         validation_output = validate_input_data(input_df)
         if not validation_output["success"]:
-            logger.warning(f"Data validation failed for request: {order}")
+            logger.warning(f"Data validation failed for request: {order.model_dump()}")
             raise HTTPException(
                 status_code=400,
                 detail={
                     "message": "Input data failed validation checks.",
-                    "details": validation_output["results"]["statistics"],
+                    "details": validation_output["results"],
                 },
             )
 
-        # Make predictions using your inference module
-        prediction, probabilities = make_predictions(input_df)
-        model_version = "v1"  # Can be dynamically retrieved from artifacts or config
+        predictions, probabilities = make_predictions(input_df)
+
+        if isinstance(predictions, dict) and "error" in predictions:
+            raise HTTPException(status_code=400, detail=predictions["error"])
+
+        prediction_value = int(predictions[0])
+        probability_value = float(probabilities[0]) if probabilities else 0.0
 
         return {
             "status": "success",
-            "prediction": (
-                prediction.tolist() if hasattr(prediction, "tolist") else prediction
-            ),
-            "probabilities": (
-                probabilities.tolist()
-                if hasattr(probabilities, "tolist")
-                else probabilities
-            ),
-            "model_version": model_version,
+            "prediction": prediction_value,
+            "probability": probability_value,
+            "model_version": "latest",
         }
 
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Service error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/predict/batch")
-def batch_predict_endpoint(orders: List[OrderRequest]):
-    """Batch prediction endpoint for multiple orders at once."""
+def batch_predict_endpoint(batch: BatchRequest):
+    """Predict a batch of orders in one request."""
     try:
-        input_df = pd.DataFrame([o.dict() for o in orders])
-        prediction, probabilities = make_predictions(input_df)
+        if not batch.orders:
+            raise HTTPException(
+                status_code=400, detail="At least one order is required."
+            )
+
+        input_df = pd.DataFrame([order.model_dump() for order in batch.orders])
+
+        validation_output = validate_input_data(input_df)
+        if not validation_output["success"]:
+            logger.warning("Batch validation failed")
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "One or more records failed validation checks.",
+                    "details": validation_output["results"],
+                },
+            )
+
+        predictions, probabilities = make_predictions(input_df)
+
+        if isinstance(predictions, dict) and "error" in predictions:
+            raise HTTPException(status_code=400, detail=predictions["error"])
+
+        response_predictions = [int(item) for item in predictions]
+        response_probabilities = (
+            [float(item) for item in probabilities] if probabilities else []
+        )
 
         return {
             "status": "success",
-            "predictions": (
-                prediction.tolist() if hasattr(prediction, "tolist") else prediction
-            ),
-            "model_version": "v1",
+            "predictions": response_predictions,
+            "probabilities": response_probabilities,
+            "model_version": "latest",
         }
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Batch prediction error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
